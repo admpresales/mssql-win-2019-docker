@@ -1,4 +1,4 @@
-ARG SERVERCORE_VERSION=1903
+ARG SERVERCORE_VERSION=1809
 FROM mcr.microsoft.com/windows/servercore:${SERVERCORE_VERSION}
 
 LABEL maintainer "Perry Skountrianos"
@@ -23,8 +23,15 @@ RUN Invoke-WebRequest -Uri $env:sql_express_download_url -OutFile sqlexpress.exe
         .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=SQLEXPRESS /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\System' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS ; \
         Remove-Item -Recurse -Force sqlexpress.exe, setup
 
+COPY create_logins.sql /
+WORKDIR /
+RUN sqlcmd -S localhost -i .\create_logins.sql
+
+HEALTHCHECK CMD [ "sqlcmd", "-Q", "select 1" ]
+
 RUN stop-service MSSQL`$SQLEXPRESS ; \
         set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.SQLEXPRESS\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpdynamicports -value '' ; \
         set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.SQLEXPRESS\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpport -value 1433 ; \
         set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.SQLEXPRESS\mssqlserver\' -name LoginMode -value 2 ;
+
 CMD .\start -sa_password $env:sa_password -ACCEPT_EULA $env:ACCEPT_EULA -attach_dbs \"$env:attach_dbs\" -Verbose
