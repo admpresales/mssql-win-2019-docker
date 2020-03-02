@@ -23,7 +23,7 @@ WORKDIR /
 RUN Invoke-WebRequest -Uri $env:sql_express_download_url -OutFile sqlexpress.exe ; \
         Start-Process -Wait -FilePath .\sqlexpress.exe -ArgumentList /qs, /x:setup ; \
         .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=SQLEXPRESS /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\System' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS ; \
-        Remove-Item -Recurse -Force sqlexpress.exe, setup \
+        Remove-Item -Recurse -Force sqlexpress.exe, setup ; \
         sqlcmd -S localhost -i .\create_logins.sql
 
 HEALTHCHECK CMD [ "sqlcmd", "-Q", "select 1" ]
