@@ -1,7 +1,8 @@
 ARG SERVERCORE_VERSION=1809
 FROM mcr.microsoft.com/windows/servercore:${SERVERCORE_VERSION}
 
-LABEL maintainer "Perry Skountrianos"
+LABEL description="MSSQL for LoadRunner Enterprise"
+LABEL authors="Jason Hrabi"
 
 # Download Links:
 # SQL Server Express latest
@@ -16,16 +17,14 @@ SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPref
 
 # make install files accessible
 COPY start.ps1 /
+COPY create_logins.sql /
 WORKDIR /
 
 RUN Invoke-WebRequest -Uri $env:sql_express_download_url -OutFile sqlexpress.exe ; \
         Start-Process -Wait -FilePath .\sqlexpress.exe -ArgumentList /qs, /x:setup ; \
         .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=SQLEXPRESS /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\System' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS ; \
-        Remove-Item -Recurse -Force sqlexpress.exe, setup
-
-COPY create_logins.sql /
-WORKDIR /
-RUN sqlcmd -S localhost -i .\create_logins.sql
+        Remove-Item -Recurse -Force sqlexpress.exe, setup \
+        sqlcmd -S localhost -i .\create_logins.sql
 
 HEALTHCHECK CMD [ "sqlcmd", "-Q", "select 1" ]
 
