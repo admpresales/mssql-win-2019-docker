@@ -5,7 +5,7 @@ LABEL description="MSSQL for LoadRunner Enterprise"
 LABEL authors="Jason Hrabi"
 
 # Download Links:
-# SQL Server Express latest
+# SQL Server Developer
 ENV exe "https://go.microsoft.com/fwlink/?linkid=840945"
 ENV box "https://go.microsoft.com/fwlink/?linkid=840944"
 
