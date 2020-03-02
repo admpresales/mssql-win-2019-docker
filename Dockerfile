@@ -6,7 +6,8 @@ LABEL authors="Jason Hrabi"
 
 # Download Links:
 # SQL Server Express latest
-ENV sql_express_download_url "https://go.microsoft.com/fwlink/?linkid=829176"
+ENV exe "https://go.microsoft.com/fwlink/?linkid=840945"
+ENV box "https://go.microsoft.com/fwlink/?linkid=840944"
 
 ENV sa_password="_" \
     attach_dbs="[]" \
@@ -20,17 +21,18 @@ COPY start.ps1 /
 COPY create_logins.sql /
 WORKDIR /
 
-RUN Invoke-WebRequest -Uri $env:sql_express_download_url -OutFile sqlexpress.exe ; \
-        Start-Process -Wait -FilePath .\sqlexpress.exe -ArgumentList /qs, /x:setup ; \
-        .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=SQLEXPRESS /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\System' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS ; \
-        Remove-Item -Recurse -Force sqlexpress.exe, setup ; \
+RUN Invoke-WebRequest -Uri $env:box -OutFile SQL.box ; \
+        Invoke-WebRequest -Uri $env:exe -OutFile SQL.exe ; \
+        Start-Process -Wait -FilePath .\SQL.exe -ArgumentList /qs, /x:setup ; \
+        .\setup\setup.exe /q /ACTION=Install /INSTANCENAME=MSSQLSERVER /FEATURES=SQLEngine /UPDATEENABLED=0 /SQLSVCACCOUNT='NT AUTHORITY\NETWORK SERVICE' /SQLSYSADMINACCOUNTS='BUILTIN\ADMINISTRATORS' /TCPENABLED=1 /NPENABLED=0 /IACCEPTSQLSERVERLICENSETERMS ; \
+        Remove-Item -Recurse -Force SQL.exe, SQL.box, setup; \
         sqlcmd -S localhost -i .\create_logins.sql
 
-HEALTHCHECK CMD [ "sqlcmd", "-Q", "select 1" ]
+RUN stop-service MSSQLSERVER ; \
+        set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.MSSQLSERVER\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpdynamicports -value '' ; \
+        set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.MSSQLSERVER\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpport -value 1433 ; \
+        set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.MSSQLSERVER\mssqlserver\' -name LoginMode -value 2 ;
 
-RUN stop-service MSSQL`$SQLEXPRESS ; \
-        set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.SQLEXPRESS\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpdynamicports -value '' ; \
-        set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.SQLEXPRESS\mssqlserver\supersocketnetlib\tcp\ipall' -name tcpport -value 1433 ; \
-        set-itemproperty -path 'HKLM:\software\microsoft\microsoft sql server\mssql14.SQLEXPRESS\mssqlserver\' -name LoginMode -value 2 ;
+HEALTHCHECK CMD [ "sqlcmd", "-Q", "select 1" ]
 
 CMD .\start -sa_password $env:sa_password -ACCEPT_EULA $env:ACCEPT_EULA -attach_dbs \"$env:attach_dbs\" -Verbose
